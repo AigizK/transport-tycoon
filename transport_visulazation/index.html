@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <script src="data.js"></script>
+</head>
+<body>
+<table>
+    <tr>
+        <td valign="top">
+            <canvas id="canvas" width="800" height="800"></canvas>
+        </td>
+        <td valign="top" style="font-size: 12px;">
+            <ol id="log"></ol>
+        </td>
+    </tr>
+</table>
+
+
+<script type="application/javascript">
+    var bw = 800;
+    // Box height
+    var bh = 800;
+
+    var delta = 50;
+
+    var canvas = document.getElementById("canvas");
+    var context = canvas.getContext("2d");
+
+    function drawBoard() {
+        for (var x = 0; x <= bw; x += delta) {
+            context.moveTo(x, 0);
+            context.lineTo(x, bh);
+        }
+
+        for (var x = 0; x <= bh; x += delta) {
+            context.moveTo(0, x);
+            context.lineTo(bw, x);
+        }
+        context.strokeStyle = "#808080";
+        context.stroke();
+    }
+
+
+    function drawWarehouse(x, y, color, name, image, cargos) {
+        context.drawImage(image, x * delta, y * delta, delta, delta);
+
+        for (j = 0; j < cargos; j++) {
+            context.fillStyle = "black";
+            context.fillRect(x * delta + delta / 2, y * delta - delta / 3 - 11 * j, 10, 10);
+        }
+
+
+        context.fillStyle = "black";
+        context.font = '24px serif';
+        context.fillText(name, x * delta + 0.1 * delta, y * delta + 1.5 * delta);
+    }
+
+    function drawRoute(x1, y1, x2, y2) {
+        context.moveTo(delta / 2 + delta * x1, delta / 2 + delta * y1);
+        context.lineTo(delta / 2 + delta * x2, delta / 2 + delta * y2);
+
+        context.strokeStyle = "#808080";
+        context.stroke();
+    }
+
+    function drawTransport(image, begin, end, percent, padding, cargo_count) {
+        bwh = warehouses.filter(function (x) {
+            return x['name'] == begin;
+        })[0];
+        ewh = warehouses.filter(function (x) {
+            return x['name'] == end;
+        })[0];
+
+        angle = Math.atan((ewh["y"] - bwh["y"]) / (ewh["x"] - bwh["x"]));
+        x = bwh["x"] + (ewh["x"] - bwh["x"]) * percent / 100;
+        y = bwh["y"] + (ewh["y"] - bwh["y"]) * percent / 100;
+
+        x0 = x * delta;
+        y0 = y * delta;
+
+        x1 = x0 * Math.cos(-angle) - y0 * Math.sin(-angle);
+        y1 = x0 * Math.sin(-angle) + y0 * Math.cos(-angle);
+
+
+        for (j = 0; j < cargo_count; j++) {
+            context.fillStyle = "black";
+            context.fillRect(x0 + delta / 2, y0 - 11 * j, 10, 10);
+        }
+
+        context.save();
+        context.rotate(angle);
+        context.drawImage(image, x1 + padding, y1 + padding, delta, delta);
+        context.restore();
+    }
+
+    function write_log(event) {
+        let div = document.getElementById('log');
+        if (!("event" in event))
+            div.innerHTML += "<li><strong>" + event["time"] + "</strong></li>";
+        else
+            div.innerHTML += "<li>" + JSON.stringify(event) + "</li>";
+    }
+
+    var warehouses = [
+        {"name": "FACTORY", "x": 4, "y": 4, "picture": 'fabrica.png', "cargos": 8, "image": new Image()},
+        {"name": "PORT", "x": 6, "y": 3, "picture": 'port.png', "cargos": 0, "image": new Image()},
+        {"name": "A", "x": 12, "y": 4, "picture": 'port.png', "cargos": 0, "image": new Image()},
+        {"name": "B", "x": 9, "y": 11, "picture": 'warehouse.png', "cargos": 0, "image": new Image()}];
+
+    warehouses.forEach(function (item, i, arr) {
+        item["image"].src = item["picture"];
+    });
+
+    var routes = [{'Begin': 'FACTORY', 'End': 'PORT', 'Distance': 1},
+        {'Begin': 'FACTORY', 'End': 'B', 'Distance': 5},
+        {'Begin': 'PORT', 'End': 'A', 'Distance': 4}];
+
+    var transport_kind = [
+        {"kind": "TRUCK", "direction": "left", "image": new Image()},
+        {"kind": "TRUCK", "direction": "right", "image": new Image()},
+        {"kind": "FERRY", "direction": "left", "image": new Image()},
+        {"kind": "FERRY", "direction": "right", "image": new Image()},
+    ];
+    transport_kind[0]["image"].src = "truck_l_e.png";
+    transport_kind[1]["image"].src = "truck_r_e.png";
+    transport_kind[2]["image"].src = "ferry_l_e.png";
+    transport_kind[3]["image"].src = "ferry_r_e.png";
+
+
+    let time = 0;
+    let readIndex = 0;
+    move = {};
+
+    let timerId = setInterval(function () {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        drawBoard();
+
+
+        routes.forEach(function (item, i, arr) {
+            bwh = warehouses.filter(function (x) {
+                return x['name'] == item['Begin'];
+            })[0];
+            ewh = warehouses.filter(function (x) {
+                return x['name'] == item['End'];
+            })[0];
+
+            drawRoute(bwh["x"], bwh["y"], ewh["x"], ewh["y"]);
+        });
+
+
+        showTime = true;
+        i = 0;
+        for (i = readIndex; i < event_list.length; i++) {
+            if (event_list[i]["time"] > time)
+                break;
+
+            if (showTime) {
+                write_log({"time": event_list[i]["time"]});
+                showTime = false;
+            }
+
+            readIndex++;
+
+            write_log(event_list[i]);
+            if (event_list[i]["event"] == "LOAD") {
+                let begin = event_list[i]["location"];
+                bwh = warehouses.filter(function (x) {
+                    return x['name'] == begin;
+                })[0];
+                bwh["cargos"] -= event_list[i]["cargo"].length;
+                continue;
+            }
+
+            if (event_list[i]["event"] == "UNLOAD") {
+                let begin = event_list[i]["location"];
+                bwh = warehouses.filter(function (x) {
+                    return x['name'] == begin;
+                })[0];
+                bwh["cargos"] += event_list[i]["cargo"].length;
+                continue;
+            }
+
+
+            if (event_list[i]["event"] != "DEPART")
+                continue;
+
+            let begin = event_list[i]["location"];
+            let end = event_list[i]["destination"];
+            let distances = routes.filter(function (x) {
+                return x['Begin'] == begin && x['End'] == end || x['Begin'] == end && x['End'] == begin;
+            });
+
+            bwh = warehouses.filter(function (x) {
+                return x['name'] == begin;
+            })[0];
+            ewh = warehouses.filter(function (x) {
+                return x['name'] == end;
+            })[0];
+
+            distance = distances[0]["Distance"];
+            move[event_list[i]["transport_id"]] = {
+                "Start": time,
+                "Finish": time + distance,
+                "Begin": begin,
+                "End": end,
+                "Cargos": event_list[i]["cargo"].length
+            }
+
+            direction = (bwh["x"] >= ewh["x"] ? "left" : "right");
+
+            move[event_list[i]["transport_id"]]["image"] = transport_kind.filter(function (item) {
+                return item["direction"] == direction && item["kind"] == event_list[i]["kind"];
+            })[0]["image"];
+        }
+
+
+        let padding = 0;
+        for (var key in move) {
+            percent = 100 * (time - move[key]["Start"]) / (move[key]["Finish"] - move[key]["Start"]);
+
+            if (percent < 0)
+                percent = 0;
+            if (percent > 100)
+                percent = 100;
+            drawTransport(move[key]["image"], move[key]["Begin"], move[key]["End"], percent, padding, move[key]["Cargos"]);
+            padding += 10
+        }
+
+        warehouses.forEach(function (item, i, arr) {
+            drawWarehouse(item["x"], item["y"], 'rgba(0, 0, 200, 0.5)', item["name"], item["image"], item["cargos"]);
+        });
+
+
+        if (time > event_list[event_list.length - 1]["time"]) {
+            clearInterval(timerId);
+
+            context.fillStyle = "red";
+            context.font = '88px serif';
+            context.fillText("FINISH", 300, 300);
+
+        }
+        
+        time += 0.07;
+
+
+        
+    }, 50);
+
+
+</script>
+</body>
+</html>
