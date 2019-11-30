@@ -8,7 +8,7 @@
 <table>
     <tr>
         <td valign="top">
-            <canvas id="canvas" width="800" height="800"></canvas>
+            <canvas id="canvas" width="820" height="820"></canvas>
         </td>
         <td valign="top" style="font-size: 12px;">
             <ol id="log"></ol>
@@ -18,9 +18,9 @@
 
 
 <script type="application/javascript">
-    var bw = 800;
+    var bw = 820;
     // Box height
-    var bh = 800;
+    var bh = 820;
 
     var delta = 50;
 
@@ -41,19 +41,20 @@
         context.stroke();
     }
 
+    function drawBackground(x, y, w, h, image) {
+        context.drawImage(image, x * delta, y * delta, w*delta, h*delta);
+    }
 
     function drawWarehouse(x, y, color, name, image, cargos) {
-        context.drawImage(image, x * delta, y * delta, delta, delta);
+        //context.drawImage(image, x * delta, y * delta, delta, delta);
 
         for (j = 0; j < cargos; j++) {
-            context.fillStyle = "black";
-            context.fillRect(x * delta + delta / 2, y * delta - delta / 3 - 11 * j, 10, 10);
+            context.drawImage(cargo_img, x * delta + delta / 2, y * delta - delta / 3 - 11 * j, 10, 10);
         }
 
-
-        context.fillStyle = "black";
-        context.font = '24px serif';
-        context.fillText(name, x * delta + 0.1 * delta, y * delta + 1.5 * delta);
+        // context.fillStyle = "black";
+        // context.font = '24px serif';
+        // context.fillText(name, x * delta + 0.1 * delta, y * delta + 1.5 * delta);
     }
 
     function drawRoute(x1, y1, x2, y2) {
@@ -84,8 +85,7 @@
 
 
         for (j = 0; j < cargo_count; j++) {
-            context.fillStyle = "black";
-            context.fillRect(x0 + delta / 2, y0 - 11 * j, 10, 10);
+            context.drawImage(cargo_img, x0 + delta / 2, y0 - 11 * j, 10, 10);
         }
 
         context.save();
@@ -103,10 +103,10 @@
     }
 
     var warehouses = [
-        {"name": "FACTORY", "x": 4, "y": 4, "picture": 'fabrica.png', "cargos": 8, "image": new Image()},
-        {"name": "PORT", "x": 6, "y": 3, "picture": 'port.png', "cargos": 0, "image": new Image()},
-        {"name": "A", "x": 12, "y": 4, "picture": 'port.png', "cargos": 0, "image": new Image()},
-        {"name": "B", "x": 9, "y": 11, "picture": 'warehouse.png', "cargos": 0, "image": new Image()}];
+        {"name": "FACTORY", "x": 4.5, "y": 5.5, "picture": 'factory.png', "cargos": 8, "image": new Image()},
+        {"name": "PORT", "x": 8, "y": 5, "picture": 'port.png', "cargos": 0, "image": new Image()},
+        {"name": "A", "x": 13.4, "y": 5, "picture": 'warehouse_a.png', "cargos": 0, "image": new Image()},
+        {"name": "B", "x": 13.5, "y": 14, "picture": 'warehouse_b.png', "cargos": 0, "image": new Image()}];
 
     warehouses.forEach(function (item, i, arr) {
         item["image"].src = item["picture"];
@@ -122,11 +122,16 @@
         {"kind": "FERRY", "direction": "left", "image": new Image()},
         {"kind": "FERRY", "direction": "right", "image": new Image()},
     ];
-    transport_kind[0]["image"].src = "truck_l_e.png";
-    transport_kind[1]["image"].src = "truck_r_e.png";
-    transport_kind[2]["image"].src = "ferry_l_e.png";
-    transport_kind[3]["image"].src = "ferry_r_e.png";
-
+    transport_kind[0]["image"].src = "truck_left.png";
+    transport_kind[1]["image"].src = "truck_right.png";
+    transport_kind[2]["image"].src = "ship_left.png";
+    transport_kind[3]["image"].src = "ship_right.png";
+    
+    var back=new Image();
+    back.src="back.jpg";
+    
+    var cargo_img = new Image();
+    cargo_img.src="cargo.png";
 
     let time = 0;
     let readIndex = 0;
@@ -134,7 +139,8 @@
 
     let timerId = setInterval(function () {
         context.clearRect(0, 0, canvas.width, canvas.height);
-        drawBoard();
+        drawBackground(0,0,17,17, back);
+        //drawBoard();
 
 
         routes.forEach(function (item, i, arr) {
@@ -145,7 +151,7 @@
                 return x['name'] == item['End'];
             })[0];
 
-            drawRoute(bwh["x"], bwh["y"], ewh["x"], ewh["y"]);
+            //drawRoute(bwh["x"], bwh["y"], ewh["x"], ewh["y"]);
         });
 
 
@@ -219,10 +225,10 @@
         for (var key in move) {
             percent = 100 * (time - move[key]["Start"]) / (move[key]["Finish"] - move[key]["Start"]);
 
-            if (percent < 0)
-                percent = 0;
-            if (percent > 100)
-                percent = 100;
+            if (percent < 10)
+                percent = 10;
+            if (percent > 90)
+                percent = 90;
             drawTransport(move[key]["image"], move[key]["Begin"], move[key]["End"], percent, padding, move[key]["Cargos"]);
             padding += 10
         }
